@@ -104,6 +104,45 @@ namespace Microsoft.Dafny {
       public string UniqueIdPrefix = null;
     }
 
+	public class GlobalComment : Bpl.Declaration { //HERE
+		public string Comment;
+
+		public GlobalComment(string comment)
+		  : base(Token.NoToken)
+		{
+		  Comment = comment;
+		}
+
+		public class Bounds {
+			public GlobalComment OpenC, CloseC;
+			public Bounds(string name)
+			{
+				OpenC  = new GlobalComment(name + " {{{");
+				CloseC = new GlobalComment("}}} " + name);
+			}
+			public void Open(Bpl.Program p)
+			{
+				p.AddTopLevelDeclaration(OpenC);
+			}
+			public void Close(Bpl.Program p)
+			{
+				p.AddTopLevelDeclaration(CloseC);
+			}
+		}
+
+		public override void Emit(TokenTextWriter /*!*/ stream, int level)
+		{
+        	stream.WriteLine(this, level, "// " + Comment);
+		}
+		public override void Register(ResolutionContext /*!*/ rc)    {}
+    	public override void Resolve(ResolutionContext /*!*/ rc)     {}
+		public override void Typecheck(TypecheckingContext /*!*/ tc) {}
+		public override Absy StdDispatch(StandardVisitor visitor)
+		{
+			return this;
+		}
+	}
+
     [NotDelayed]
     public Translator(ErrorReporter reporter, TranslatorFlags flags = null) {
       this.reporter = reporter;
@@ -113,6 +152,13 @@ namespace Microsoft.Dafny {
       this.flags = flags;
       Bpl.Program boogieProgram = ReadPrelude();
       if (boogieProgram != null) {
+		List<Bpl.Declaration> prelude_decl
+			= new List<Bpl.Declaration>(boogieProgram.TopLevelDeclarations);
+		GlobalComment.Bounds section = new GlobalComment.Bounds("prelude");
+		prelude_decl.Insert(0, section.OpenC);
+		prelude_decl.Add(section.CloseC);
+		boogieProgram.TopLevelDeclarations = prelude_decl;
+
         sink = boogieProgram;
         predef = FindPredefinedDecls(boogieProgram);
       }
@@ -742,6 +788,8 @@ namespace Microsoft.Dafny {
       EstablishModuleScope(p.BuiltIns.SystemModule, forModule);
       Type.PushScope(this.currentScope);
 
+	  GlobalComment.Bounds section = new GlobalComment.Bounds("Bitvector axioms");
+	  section.Open(sink);
       foreach (var w in program.BuiltIns.Bitwidths) {
         // type axioms
         AddBitvectorTypeAxioms(w);
@@ -760,7 +808,7 @@ namespace Microsoft.Dafny {
         AddBitvectorFunction(w, "lt_bv", "bvult", true, Bpl.Type.Bool, false);
         AddBitvectorFunction(w, "le_bv", "bvule", true, Bpl.Type.Bool, true);  // Z3 supports this, but it seems not to be in the SMT-LIB 2 standard
         AddBitvectorFunction(w, "ge_bv", "bvuge", true, Bpl.Type.Bool, true);  // Z3 supports this, but it seems not to be in the SMT-LIB 2 standard
-        AddBitvectorFunction(w, "gt_bv", "bvugt", true, Bpl.Type.Bool, false);  // Z3 supports this, but it seems not to be in the SMT-LIB 2 standard
+        AddBitvectorFunction(w, "gt_bv", "bvugt", true, Bpl.Type.Bool, false); // Z3 supports this, but it seems not to be in the SMT-LIB 2 standard
         // shifts
         AddBitvectorShiftFunction(w, "LeftShift_bv", "bvshl");
         AddBitvectorShiftFunction(w, "RightShift_bv", "bvlshr");
@@ -770,7 +818,10 @@ namespace Microsoft.Dafny {
         // conversion functions
         AddBitvectorNatConversionFunction(w);
       }
+	  section.Close(sink);
 
+	  section = new GlobalComment.Bounds("BuiltIns declarations");
+	  section.Open(sink);
       foreach (TopLevelDecl d in program.BuiltIns.SystemModule.TopLevelDecls) {
         currentDeclaration = d;
         if (d is OpaqueTypeDecl) {
@@ -803,6 +854,7 @@ namespace Microsoft.Dafny {
           Contract.Assert(d is ValuetypeDecl);
         }
       }
+	  section.Close(sink);
 
       ComputeFunctionFuel(); // compute which function needs fuel constants.
 
@@ -812,6 +864,8 @@ namespace Microsoft.Dafny {
       mods.Insert(0, forModule);
 
       foreach (ModuleDefinition m in mods) {
+		section = new GlobalComment.Bounds("module "+m.Name);
+		section.Open(sink);
         foreach (TopLevelDecl d in m.TopLevelDecls.FindAll(VisibleInScope)) {
           currentDeclaration = d;
           if (d is OpaqueTypeDecl) {
@@ -826,14 +880,21 @@ namespace Microsoft.Dafny {
             Contract.Assert(false);
           }
         }
+		section.Close(sink);
       }
 
+	  section = new GlobalComment.Bounds("tytag constants");
+	  section.Open(sink);
       foreach (var c in tytagConstants.Values) {
         sink.AddTopLevelDeclaration(c);
       }
+	  section.Close(sink);
+	  section = new GlobalComment.Bounds("field constants");
+	  section.Open(sink);
       foreach (var c in fieldConstants.Values) {
         sink.AddTopLevelDeclaration(c);
       }
+	  section.Close(sink);
 
       AddTraitParentAxioms();
 
@@ -1259,6 +1320,8 @@ namespace Microsoft.Dafny {
           AddClassMembers(dd, true);
         } else if (d is ClassDecl) {
           var cl = (ClassDecl)d;
+		  GlobalComment.Bounds bounds = new GlobalComment.Bounds("class "+cl.Name);
+		  bounds.Open(sink);
           AddClassMembers(cl, DafnyOptions.O.OptimizeResolution < 1);
           if (cl.NonNullTypeDecl != null) {
             AddTypeDecl(cl.NonNullTypeDecl);
@@ -1266,6 +1329,7 @@ namespace Microsoft.Dafny {
           if (d is IteratorDecl) {
             AddIteratorSpecAndBody((IteratorDecl)d);
           }
+		  bounds.Close(sink);
         } else if (d is DatatypeDecl) {
           var dd = (DatatypeDecl)d;
           AddDatatype(dd);
@@ -2361,6 +2425,8 @@ namespace Microsoft.Dafny {
     }
 
     void AddMethod_Top(Method m) {
+	  GlobalComment.Bounds method_bounds = new GlobalComment.Bounds("method "+m.Name);
+	  method_bounds.Open(sink);
       FuelContext oldFuelContext = this.fuelContext;
       this.fuelContext = FuelSetting.NewFuelContext(m);
 
@@ -2398,6 +2464,7 @@ namespace Microsoft.Dafny {
       Reset();
       this.fuelContext = oldFuelContext;
 
+	  method_bounds.Close(sink);
     }
 
     /// <summary>
@@ -6519,6 +6586,7 @@ namespace Microsoft.Dafny {
       return new Bpl.NAryExpr(tok, new Bpl.FunctionCall(id), args);
     }
 
+	// ANT: Diff with CheckWellformed
     Bpl.Expr CanCallAssumption(Expression expr, ExpressionTranslator etran) {
       Contract.Requires(expr != null);
       Contract.Requires(etran != null);

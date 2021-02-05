@@ -28,6 +28,8 @@ Binaries/*
 
 Package/
 
+Ant/
+
 Source/*/bin/
 Source/*/obj/
 Source/*/obj_core/

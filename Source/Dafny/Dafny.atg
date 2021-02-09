@@ -2319,7 +2319,7 @@ Stmt<.List<Statement/*!*/>/*!*/ ss.>
   .
 
 /*------------------------------------------------------------------------*/
-OneStmt<out Statement/*!*/ s>
+OneStmt<out Statement/*!*/ s>                                      /*:ANT:*/
 = (. Contract.Ensures(Contract.ValueAtReturn(out s) != null);
      s = dummyStmt;  /* to please the compiler */
      BlockStmt bs;

@@ -1438,6 +1438,9 @@ namespace Microsoft.Dafny {
       Contract.Requires(dt != null);
       Contract.Requires(sink != null && predef != null);
 
+	  GlobalComment.Bounds decl = new GlobalComment.Bounds("DataType: " + dt.Name);
+	  decl.Open(sink);
+
       foreach (DatatypeCtor ctor in dt.Ctors) {
         // Add:  function #dt.ctor(tyVars, paramTypes) returns (DatatypeType);
 
@@ -2086,6 +2089,8 @@ namespace Microsoft.Dafny {
             BplForall(vars, trigger, BplImp(BplAnd(equal, kIsValid), PEq)), "Prefix equality shortcut"));
         });
       }
+
+	  decl.Close(sink);
     }
 
     /// <summary>
@@ -2292,6 +2297,9 @@ namespace Microsoft.Dafny {
       Contract.Ensures(fuelContext == Contract.OldValue(fuelContext));
       Contract.Assert(VisibleInScope(c));
 
+	  GlobalComment.Bounds declBounds = new GlobalComment.Bounds("decl&axioms");
+	  declBounds.Open(sink);
+
       sink.AddTopLevelDeclaration(GetClass(c));
       if (c is ArrayClassDecl) {
         // classes.Add(c, predef.ClassDotArray);
@@ -2362,6 +2370,7 @@ namespace Microsoft.Dafny {
           sink.AddTopLevelDeclaration(implements_axiom);
         }
       }
+	  declBounds.Close(sink);
 
       foreach (MemberDecl member in c.Members.FindAll(VisibleInScope)) {
         Contract.Assert(isAllocContext == null);
@@ -4513,7 +4522,7 @@ namespace Microsoft.Dafny {
       }
 
       Bpl.StmtList stmts;
-      if (!wellformednessProc) {
+      if (!wellformednessProc) { // :ANT:
         var inductionVars = ApplyInduction(m.Ins, m.Attributes);
         if (inductionVars.Count != 0) {
           // Let the parameters be this,x,y of the method M and suppose ApplyInduction returns y.
@@ -6586,7 +6595,6 @@ namespace Microsoft.Dafny {
       return new Bpl.NAryExpr(tok, new Bpl.FunctionCall(id), args);
     }
 
-	// ANT: Diff with CheckWellformed
     Bpl.Expr CanCallAssumption(Expression expr, ExpressionTranslator etran) {
       Contract.Requires(expr != null);
       Contract.Requires(etran != null);
@@ -7163,6 +7171,7 @@ namespace Microsoft.Dafny {
       }
     }
 
+	// --- CheckWellformed {{{
     void TrStmt_CheckWellformed(Expression expr, BoogieStmtListBuilder builder, List<Variable> locals, ExpressionTranslator etran, bool subsumption, bool lValueContext = false) {
       Contract.Requires(expr != null);
       Contract.Requires(builder != null);
@@ -8243,6 +8252,7 @@ namespace Microsoft.Dafny {
       }
       return result;
     }
+	//}}}
 
     /// <summary>
     /// Returns the translation of converting "r", whose Dafny type was "fromType", to a value of type "toType".

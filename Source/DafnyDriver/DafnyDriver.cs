@@ -269,6 +269,11 @@ namespace Microsoft.Dafny
       } else if (dafnyProgram != null && !CommandLineOptions.Clo.NoResolve && !CommandLineOptions.Clo.NoTypecheck
           && DafnyOptions.O.DafnyVerify) {
 
+		if (DafnyOptions.O.ExportFile != null) {
+			var exporter = new DafnyExporter(DafnyOptions.O.ExportFile);
+			exporter.Export(dafnyProgram);
+		}
+
         var boogiePrograms = Translate(dafnyProgram);
 
         Dictionary<string, PipelineStatistics> statss;

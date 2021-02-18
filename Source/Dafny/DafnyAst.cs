@@ -621,7 +621,7 @@ namespace Microsoft.Dafny {
 
   }
 
-  // ------------------------------------------------------------------------------------------------------
+  // ---- Types --------------------------------------------------------------------------------------------{{{
 
   public abstract class Type {
     public static readonly BoolType Bool = new BoolType();
@@ -3333,6 +3333,7 @@ namespace Microsoft.Dafny {
       this.orig = orig;
     }
   }
+  // }}}
 
   // ------------------------------------------------------------------------------------------------------
 
@@ -5832,6 +5833,7 @@ namespace Microsoft.Dafny {
     }
   }
 
+  // IVariable {{{
   [ContractClass(typeof(IVariableContracts))]
   public interface IVariable {
     string Name {
@@ -5865,6 +5867,9 @@ namespace Microsoft.Dafny {
     IToken Tok {
       get;
     }
+
+    // For Export
+    public int ExportUniqueId(DafnyExporter.IdGenerator generator);
   }
   [ContractClassFor(typeof(IVariable))]
   public abstract class IVariableContracts : IVariable {
@@ -5930,8 +5935,12 @@ namespace Microsoft.Dafny {
       Contract.Ensures(Contract.Result<string>() != null);
       throw new NotImplementedException();
     }
-  }
+    public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
+      throw new NotImplementedException();
+    }
+  }//}}}
 
+  // NonglobalVariable ... {{{
   public abstract class NonglobalVariable : IVariable {
     public readonly IToken tok;
     readonly string name;
@@ -6047,6 +6056,11 @@ namespace Microsoft.Dafny {
       }
     }
 
+    protected int exportId;
+    public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
+      return generator.MakeId(ref exportId);
+    }
+
     public NonglobalVariable(IToken tok, string name, Type type, bool isGhost) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
@@ -6055,6 +6069,7 @@ namespace Microsoft.Dafny {
       this.name = name;
       this.type = type;
       this.isGhost = isGhost;
+      this.exportId = DafnyExporter.IdGenerator.None;
     }
   }
 
@@ -6137,6 +6152,7 @@ namespace Microsoft.Dafny {
       Contract.Requires(type != null);
     }
   }
+  // }}}
 
   public class Function : MemberDecl, TypeParameter.ParentType, ICallable {
     public override string WhatKind { get { return "function"; } }
@@ -7163,6 +7179,7 @@ namespace Microsoft.Dafny {
     }
   }
 
+  // AssignmentRhs {{{
   public abstract class AssignmentRhs
   {
     public readonly IToken Tok;
@@ -7371,6 +7388,7 @@ namespace Microsoft.Dafny {
     }
     public override bool CanAffectPreviouslyKnownExpressions { get { return false; } }
   }
+  //}}}
 
   public class VarDeclStmt : Statement
   {
@@ -7675,6 +7693,11 @@ namespace Microsoft.Dafny {
       Contract.Invariant(OptionalType != null);
     }
 
+    protected int exportId;
+    public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
+      return generator.MakeId(ref exportId);
+    }
+
     public LocalVariable(IToken tok, IToken endTok, string name, Type type, bool isGhost) {
       Contract.Requires(tok != null);
       Contract.Requires(endTok != null);
@@ -7689,6 +7712,7 @@ namespace Microsoft.Dafny {
         ((InferredTypeProxy)type).KeepConstraints = true;
       }
       this.IsGhost = isGhost;
+      this.exportId = DafnyExporter.IdGenerator.None;
     }
 
     public string Name {

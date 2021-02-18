@@ -5,7 +5,7 @@ default: parser runtime boogie exe
 all: runtime boogie exe refman
 
 exe:
-	(cd ${DIR} ; dotnet build Source/Dafny.sln ) ## includes parser
+	(cd ${DIR} ; dotnet build --nologo Source/Dafny.sln ) ## includes parser
 
 boogie: ${DIR}/Source/boogie/Binaries/Boogie.exe
 

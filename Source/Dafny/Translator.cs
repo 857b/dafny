@@ -104,7 +104,7 @@ namespace Microsoft.Dafny {
       public string UniqueIdPrefix = null;
     }
 
-	public class GlobalComment : Bpl.Declaration { //HERE
+	public class GlobalComment : Bpl.Declaration {
 		public string Comment;
 
 		public GlobalComment(string comment)
@@ -880,23 +880,26 @@ namespace Microsoft.Dafny {
             Contract.Assert(false);
           }
         }
-		section.Close(sink);
+        section.Close(sink);
       }
 
-	  section = new GlobalComment.Bounds("tytag constants");
-	  section.Open(sink);
+      section = new GlobalComment.Bounds("tytag constants");
+      section.Open(sink);
       foreach (var c in tytagConstants.Values) {
         sink.AddTopLevelDeclaration(c);
       }
-	  section.Close(sink);
-	  section = new GlobalComment.Bounds("field constants");
-	  section.Open(sink);
+      section.Close(sink);
+      section = new GlobalComment.Bounds("field constants");
+      section.Open(sink);
       foreach (var c in fieldConstants.Values) {
         sink.AddTopLevelDeclaration(c);
       }
-	  section.Close(sink);
+      section.Close(sink);
 
+      section = new GlobalComment.Bounds("trait axioms");
+      section.Open(sink);
       AddTraitParentAxioms();
+      section.Close(sink);
 
       if (InsertChecksums) {
         foreach (var impl in sink.Implementations) {
@@ -2412,6 +2415,8 @@ namespace Microsoft.Dafny {
     }
 
     void AddFunction_Top(Function f) {
+      GlobalComment.Bounds fun_bounds = new GlobalComment.Bounds($"function {f.Name}");
+      fun_bounds.Open(sink);
       FuelContext oldFuelContext = this.fuelContext;
       this.fuelContext = FuelSetting.NewFuelContext(f);
       isAllocContext = new IsAllocContext(true);
@@ -2431,10 +2436,11 @@ namespace Microsoft.Dafny {
       }
       this.fuelContext = oldFuelContext;
       isAllocContext = null;
+      fun_bounds.Close(sink);
     }
 
     void AddMethod_Top(Method m) {
-	  GlobalComment.Bounds method_bounds = new GlobalComment.Bounds("method "+m.Name);
+	  GlobalComment.Bounds method_bounds = new GlobalComment.Bounds($"method {m.Name}");
 	  method_bounds.Open(sink);
       FuelContext oldFuelContext = this.fuelContext;
       this.fuelContext = FuelSetting.NewFuelContext(m);
@@ -3378,6 +3384,7 @@ namespace Microsoft.Dafny {
 
       // Add the precondition function and its axiom (which is equivalent to the anteReqAxiom)
       if (body == null || (RevealedInScope(f) && lits == null)) {
+        // function f#requires(args_ty) : bool;
         var precondF = new Bpl.Function(f.tok,
           RequiresName(f), new List<Bpl.TypeVariable>(),
           funcFormals.ConvertAll(v => (Bpl.Variable)BplFormalVar(null, v.TypedIdent.Type, true)),
@@ -4522,9 +4529,10 @@ namespace Microsoft.Dafny {
       }
 
       Bpl.StmtList stmts;
-      if (!wellformednessProc) { // :ANT:
+      if (!wellformednessProc) {
         var inductionVars = ApplyInduction(m.Ins, m.Attributes);
         if (inductionVars.Count != 0) {
+          builder.AddComment("induction vars"); //TODO
           // Let the parameters be this,x,y of the method M and suppose ApplyInduction returns y.
           // Also, let Pre be the precondition and VF be the decreases clause.
           // Then, insert into the method body what amounts to:
@@ -4618,33 +4626,39 @@ namespace Microsoft.Dafny {
 
         // $_reverifyPost := false;
         builder.Add(Bpl.Cmd.SimpleAssign(m.tok, new Bpl.IdentifierExpr(m.tok, "$_reverifyPost", Bpl.Type.Bool), Bpl.Expr.False));
+
         // register output parameters with definite-assignment trackers
         Contract.Assert(definiteAssignmentTrackers.Count == 0);
         m.Outs.Iter(p => AddExistingDefiniteAssignmentTracker(p, m.IsGhost));
-        // translate the body
+
+        builder.AddComment("translate the body");
         TrStmt(m.Body, builder, localVariables, etran);
         m.Outs.Iter(p => CheckDefiniteAssignmentReturn(m.BodyEndTok, p, builder));
         stmts = builder.Collect(m.Body.Tok);
+
         // tear down definite-assignment trackers
         m.Outs.Iter(RemoveDefiniteAssignmentTracker);
         Contract.Assert(definiteAssignmentTrackers.Count == 0);
-      } else {
-        // check well-formedness of the preconditions, and then assume each one of them
+
+      } else { // wellformednessProc
+        builder.AddComment("check well-formedness of the preconditions, and then assume each one of them");
         foreach (AttributedExpression p in m.Req) {
           CheckWellformedAndAssume(p.E, new WFOptions(), localVariables, builder, etran);
         }
-        // check well-formedness of the modifies clauses
+
+        builder.AddComment("check well-formedness of the modifies clauses");
         CheckFrameWellFormed(new WFOptions(), m.Mod.Expressions, localVariables, builder, etran);
-        // check well-formedness of the decreases clauses
+
+        builder.AddComment("check well-formedness of the decreases clauses");
         foreach (Expression p in m.Decreases.Expressions)
         {
           CheckWellformed(p, new WFOptions(), localVariables, builder, etran);
         }
 
         if (!(m is TwoStateLemma)) {
-          // play havoc with the heap according to the modifies clause
+          builder.AddComment("play havoc with the heap according to the modifies clause");
           builder.Add(new Bpl.HavocCmd(m.tok, new List<Bpl.IdentifierExpr> { (Bpl.IdentifierExpr/*TODO: this cast is rather dubious*/)etran.HeapExpr }));
-          // assume the usual two-state boilerplate information
+          //assume the usual two-state boilerplate information
           foreach (BoilerplateTriple tri in GetTwoStateBoilerplate(m.tok, m.Mod.Expressions, m.IsGhost, etran.Old, etran, etran.Old)) {
             if (tri.IsFree) {
               builder.Add(TrAssumeCmd(m.tok, tri.Expr));
@@ -4652,8 +4666,8 @@ namespace Microsoft.Dafny {
           }
         }
 
-        // also play havoc with the out parameters
         if (outParams.Count != 0) {  // don't create an empty havoc statement
+          builder.AddComment("play havoc with the out parameters");
           List<Bpl.IdentifierExpr> outH = new List<Bpl.IdentifierExpr>();
           foreach (Bpl.Variable b in outParams) {
             Contract.Assert(b != null);
@@ -4667,7 +4681,7 @@ namespace Microsoft.Dafny {
           builder.Add(CaptureState(m.Ens[0].E.tok, false, "post-state"));
         }
 
-        // check wellformedness of postconditions
+        builder.AddComment("check wellformedness of postconditions");
         foreach (AttributedExpression p in m.Ens) {
           CheckWellformedAndAssume(p.E, new WFOptions(), localVariables, builder, etran);
         }
@@ -6170,6 +6184,7 @@ namespace Microsoft.Dafny {
       // Check well-formedness of the preconditions (including termination), and then
       // assume each one of them.  After all that (in particular, after assuming all
       // of them), do the postponed reads checks.
+      builder.AddComment("check well-formedness of preconditions, and then assume each of them");
       var wfo = new WFOptions(null, true, true /* do delayed reads checks */);
       foreach (AttributedExpression p in f.Req) {
         CheckWellformedAndAssume(p.E, wfo, locals, builder, etran);
@@ -6180,11 +6195,13 @@ namespace Microsoft.Dafny {
       // the preconditions.  In other words, the well-formedness of the reads clause is
       // allowed to assume the precondition (yet, the requires clause is checked to
       // read only those things indicated in the reads clause).
+      builder.AddComment("check well-formedness of the reads clause");
       wfo = new WFOptions(null, true, true /* do delayed reads checks */);
       CheckFrameWellFormed(wfo, f.Reads, locals, builder, etran);
       wfo.ProcessSavedReadsChecks(locals, builderInitializationArea, builder);
 
       // check well-formedness of the decreases clauses (including termination, but no reads checks)
+      builder.AddComment("check well-formedness of the decreases clause");
       foreach (Expression p in f.Decreases.Expressions)
       {
         CheckWellformed(p, new WFOptions(null, false), locals, builder, etran);
@@ -6199,6 +6216,7 @@ namespace Microsoft.Dafny {
       //   }
       // Here go the postconditions (termination checks included, but no reads checks)
       BoogieStmtListBuilder postCheckBuilder = new BoogieStmtListBuilder(this);
+      postCheckBuilder.AddComment("check well-formedness of postcondition");
       // Assume the type returned by the call itself respects its type (this matters if the type is "nat", for example)
       {
         var args = new List<Bpl.Expr>();
@@ -6235,6 +6253,7 @@ namespace Microsoft.Dafny {
       }
       // Here goes the body (and include both termination checks and reads checks)
       BoogieStmtListBuilder bodyCheckBuilder = new BoogieStmtListBuilder(this);
+      bodyCheckBuilder.AddComment("check well-formedness of body");
       if (f.Body == null || !RevealedInScope(f)) {
         // don't fall through to postcondition checks
         bodyCheckBuilder.Add(TrAssumeCmd(f.tok, Bpl.Expr.False));
@@ -10776,16 +10795,19 @@ namespace Microsoft.Dafny {
           guard = null;
         } else {
           guard = s.IsBindingGuard ? AlphaRename((ExistsExpr)s.Guard, "eg$") : s.Guard;
+		  // Well-formedness of the guard
           TrStmt_CheckWellformed(guard, builder, locals, etran, true);
         }
+		// Generate then block
         BoogieStmtListBuilder b = new BoogieStmtListBuilder(this);
         CurrentIdGenerator.Push();
-        if (s.IsBindingGuard) {
+        if (s.IsBindingGuard) { // only in ghost context
           var exists = (ExistsExpr)s.Guard;  // the original (that is, not alpha-renamed) guard
           IntroduceAndAssignExistentialVars(exists, b, builder, locals, etran, stmt.IsGhost);
         }
         Bpl.StmtList thn = TrStmt2StmtList(b, s.Thn, locals, etran);
         CurrentIdGenerator.Pop();
+		// Generate else block
         Bpl.StmtList els;
         Bpl.IfCmd elsIf = null;
         b = new BoogieStmtListBuilder(this);
@@ -10799,6 +10821,7 @@ namespace Microsoft.Dafny {
           if (els.BigBlocks.Count == 1) {
             Bpl.BigBlock bb = els.BigBlocks[0];
             if (bb.LabelName == null && bb.simpleCmds.Count == 0 && bb.ec is Bpl.IfCmd) {
+			  // translate to else if instead
               elsIf = (Bpl.IfCmd)bb.ec;
               els = null;
             }
@@ -12074,6 +12097,7 @@ namespace Microsoft.Dafny {
       builder.Add(new Bpl.HavocCmd(s.Tok, new List<Bpl.IdentifierExpr> { w }));
 
       List<Bpl.PredicateCmd> invariants = new List<Bpl.PredicateCmd>();
+      // CheckWellformed(/\ loopInv.E /\ theDecreases)
       BoogieStmtListBuilder invDefinednessBuilder = new BoogieStmtListBuilder(this);
       foreach (AttributedExpression loopInv in s.Invariants) {
         string errorMessage = CustomErrorMessage(loopInv.Attributes);
@@ -14424,6 +14448,7 @@ namespace Microsoft.Dafny {
       public void Add(TransferCmd tcmd) { builder.Add(tcmd);  }
       public void AddLabelCmd(string label) { builder.AddLabelCmd(label); }
       public void AddLocalVariable(string name) { builder.AddLocalVariable(name); }
+      public void AddComment(string msg) { builder.Add(new CommentCmd(msg)); }
 
       public StmtList Collect(IToken tok) {
         return builder.Collect(tok);

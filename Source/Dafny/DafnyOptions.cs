@@ -99,6 +99,7 @@ namespace Microsoft.Dafny
     public bool UseRuntimeLib = false;
     public bool DisableScopes = false;
     public int Allocated = 3;
+	public string ExportFile = null;
 
     protected override bool ParseOption(string name, Bpl.CommandLineOptionEngine.CommandLineParseState ps) {
       var args = ps.args;  // convenient synonym
@@ -115,6 +116,12 @@ namespace Microsoft.Dafny
             DafnyPrintFile = args[ps.i];
           }
           return true;
+
+	    case "export":
+		  if (ps.ConfirmArgumentCount(1)) {
+		  	ExportFile = args[ps.i];
+		  }
+		  return true;
 
         case "printMode":
           if (ps.ConfirmArgumentCount(1)) {

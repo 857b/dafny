@@ -12241,11 +12241,12 @@ namespace Microsoft.Dafny {
         loopBodyBuilder.Add(new Bpl.HavocCmd(s.Tok, bplTargets));
         loopBodyBuilder.Add(Bpl.Cmd.SimpleAssign(s.Tok, w, Bpl.Expr.False));
       }
-      // Finally, assume the well-formedness of the invariant (which has been checked once and for all above), so that the check
-      // of invariant-maintenance can use the appropriate canCall predicates.
-      foreach (AttributedExpression loopInv in s.Invariants) {
-        loopBodyBuilder.Add(TrAssumeCmd(loopInv.E.tok, CanCallAssumption(loopInv.E, etran)));
+
+      if (!isBodyLessLoop) {
+        // havoc w;
+        loopBodyBuilder.Add(new Bpl.HavocCmd(s.Tok, new List<Bpl.IdentifierExpr> { w }));
       }
+
       Bpl.StmtList body = loopBodyBuilder.Collect(s.Tok);
 
       builder.Add(new Bpl.WhileCmd(s.Tok, Bpl.Expr.True, invariants, body));

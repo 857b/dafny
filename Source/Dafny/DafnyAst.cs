@@ -3388,6 +3388,12 @@ namespace Microsoft.Dafny {
 
     private bool scopeIsInherited = false;
 
+    // For Export
+    protected int exportId = DafnyExporter.IdGenerator.None;
+    public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
+      return generator.MakeId(ref exportId);
+    }
+
     public virtual bool CanBeExported() {
       return true;
     }
@@ -6056,7 +6062,7 @@ namespace Microsoft.Dafny {
       }
     }
 
-    protected int exportId;
+    protected int exportId = DafnyExporter.IdGenerator.None;
     public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
       return generator.MakeId(ref exportId);
     }
@@ -6069,7 +6075,6 @@ namespace Microsoft.Dafny {
       this.name = name;
       this.type = type;
       this.isGhost = isGhost;
-      this.exportId = DafnyExporter.IdGenerator.None;
     }
   }
 
@@ -7693,7 +7698,7 @@ namespace Microsoft.Dafny {
       Contract.Invariant(OptionalType != null);
     }
 
-    protected int exportId;
+    protected int exportId = DafnyExporter.IdGenerator.None;
     public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
       return generator.MakeId(ref exportId);
     }
@@ -7712,7 +7717,6 @@ namespace Microsoft.Dafny {
         ((InferredTypeProxy)type).KeepConstraints = true;
       }
       this.IsGhost = isGhost;
-      this.exportId = DafnyExporter.IdGenerator.None;
     }
 
     public string Name {

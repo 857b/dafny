@@ -7286,7 +7286,7 @@ namespace Microsoft.Dafny {
     ///     ElementInit is non-null to represent "new EType[ArrayDimensions] (elementInit)",
     ///     InitDisplay is non-null to represent "new EType[ArrayDimensions] [InitDisplay]",
     ///     and Arguments, Path, and InitCall are all null.
-    /// If ArrayDimentions == null && Arguments == null, then the TypeRhs represents "new EType"
+    /// If ArrayDimensions == null && Arguments == null, then the TypeRhs represents "new EType"
     ///     and ElementInit, Path, and InitCall are all null.
     /// If Arguments != null, then the TypeRhs represents "new Path(Arguments)"
     ///     and EType and InitCall is filled in by resolution, and ArrayDimensions == null and ElementInit == null.

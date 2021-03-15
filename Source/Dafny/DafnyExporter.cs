@@ -193,32 +193,21 @@ public class DafnyExporter
       WriteSep(ref sep_wr);
       ExportExpr(e.E);
     }
-    wr.Write("],\n  Mod  = ");
-    bool isUnframed = false;
+    wr.Write("],\n  Mod  = {");
+    sep_wr = false;
     foreach (FrameExpression fe in m.Mod.Expressions) {
-      if (fe.E is WildcardExpr) {
-        isUnframed = true;
-        wr.Write("UnFramed");
-        break;
-      }
+      if (fe.E.Type.GetType() == typeof(UserDefinedType)) {
+        UserDefinedType udt = (UserDefinedType)fe.E.Type;
+        if (udt.ResolvedClass == null)
+          throw new ExportException("FrameExpression::UserDefinedType ResolvedClass=null");
+        else {
+          WriteSep(ref sep_wr);
+          ExportExpr(fe.E);
+        }
+      } else
+        throw ExportException.NImpType("FrameExpression", fe.E);
     }
-    if (!isUnframed) {
-      wr.Write("FrameExprs {");
-      sep_wr = false;
-      foreach (FrameExpression fe in m.Mod.Expressions) {
-        if (fe.E.Type.GetType() == typeof(UserDefinedType)) {
-          UserDefinedType udt = (UserDefinedType)fe.E.Type;
-          if (udt.ResolvedClass == null)
-            throw new ExportException("FrameExpression::UserDefinedType ResolvedClass=null");
-          else {
-            WriteSep(ref sep_wr);
-            ExportExpr(fe.E);
-          }
-        } else
-          throw ExportException.NImpType("FrameExpression", fe.E);
-      }
-      wr.Write("}");
-    }
+    wr.Write("}");
     //TODO +Decreases
     wr.Write(",\n  Body = ");
     if (m.Body == null)
@@ -233,6 +222,23 @@ public class DafnyExporter
     return name;
   }
 
+  private int GetResolvedClassId(TopLevelDecl ty, bool allowNonNull=false)
+  {
+    if (ty == null)
+      throw new ExportException("GetResolvedClassId of null");
+    else if (ty.GetType() == typeof(ClassDecl))
+      return ty.ExportUniqueId(id_gen);
+    else if (allowNonNull && ty.GetType() == typeof(NonNullTypeDecl))
+      return GetResolvedClassId(((NonNullTypeDecl)ty).Class);
+    else
+      throw ExportException.NImpType("ResolvedClass", ty);
+  }
+
+  private int GetUserDefinedTypeClassId(UserDefinedType udt, bool allowNonNull=false)
+  {
+    return GetResolvedClassId(udt.ResolvedClass, allowNonNull);
+  }
+
   private void ExportType(Dfy.Type ty)
   {
     if (ty.TypeArgs.Count != 0)
@@ -243,14 +249,7 @@ public class DafnyExporter
     } else if (ty.GetType() == typeof(IntType)) {
       wr.Write("(tprim TInt)");
     } else if (ty.GetType() == typeof(UserDefinedType)) {
-      UserDefinedType udt = (UserDefinedType)ty;
-      if (udt.ResolvedClass == null)
-        throw new ExportException("Type::UserDefinedType ResolvedClass=null");
-      else if (udt.ResolvedClass.GetType() == typeof(ClassDecl))
-        wr.Write($"(TCon (tclass {udt.ResolvedClass.ExportUniqueId(id_gen)}) [])");
-      else
-        throw ExportException.NImpType("Type::UserDefinedType", udt.ResolvedClass);
-
+      wr.Write($"(TCon (tclass {GetUserDefinedTypeClassId((UserDefinedType)ty)}) [])");
     } else
       throw ExportException.NImpType("Type", ty);
   }
@@ -353,11 +352,26 @@ public class DafnyExporter
 
   private void ExportAssignStmt(AssignStmt s)
   {
-    wr.Write("Update ");
-    ExportExpr(s.Lhs);
-    wr.Write(" ");
     if (s.Rhs.GetType() == typeof(ExprRhs)) {
+      // lhs = rhs;
+      wr.Write("Update ");
+      ExportExpr(s.Lhs);
+      wr.Write(" ");
       ExportExpr(((ExprRhs)s.Rhs).Expr);
+    } else if (s.Rhs.GetType() == typeof(TypeRhs)) {
+      TypeRhs tyRhs = (TypeRhs)s.Rhs;
+      if (tyRhs.ArrayDimensions == null && tyRhs.Arguments == null) {
+        // lhs = new C;
+        wr.Write("New ");
+        ExportExpr(s.Lhs);
+        wr.Write(" ");
+        if (tyRhs.EType.TypeArgs.Count != 0)
+          throw new ExportException("TypeArgs");
+        if (tyRhs.EType.GetType() != typeof(UserDefinedType))
+          throw ExportException.NImpType("AssignRhs::new", tyRhs.EType);
+        wr.Write($"(TClass {GetUserDefinedTypeClassId((UserDefinedType)tyRhs.EType, true)})");
+      } else
+        throw new ExportException("AssignRhs::new kind");
     } else
       throw ExportException.NImpType("AssignRhs", s.Rhs);
     wr.WriteLine();
@@ -509,6 +523,6 @@ public class DafnyExporter
     }
     wr.WriteLine("]\"");
     wr.WriteLine($"definition {fun_name} :: \"{key_ty} => {val_ty} option\" where");
-    wr.WriteLine($"  \"{fun_name} == assoc_find {assoc_name}\"");
+    wr.WriteLine($"  \"{fun_name} == map_of {assoc_name}\"");
   }
 }

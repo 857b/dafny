@@ -10395,6 +10395,7 @@ namespace Microsoft.Dafny {
       Contract.Requires(etran != null);
       Contract.Requires(codeContext != null && predef != null);
       Contract.Ensures(fuelContext == Contract.OldValue(fuelContext));
+      builder.Add(new Bpl.AssumeCmd(stmt.Tok, Bpl.Expr.True, new QKeyValue(stmt.Tok, "begin_stmt", new List<object>(), null)));
 
       stmtContext = StmtType.NONE;
       adjustFuelForExists = true;  // fuel for exists might need to be adjusted based on whether it's in an assert or assume stmt.

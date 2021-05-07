@@ -748,7 +748,8 @@ namespace Microsoft.Dafny {
       {
           //using (System.IO.Stream stream = cce.NonNull( System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("DafnyPrelude.bpl")) // Use this once Spec#/VSIP supports designating a non-.resx project item as an embedded resource
           string codebase = cce.NonNull(System.IO.Path.GetDirectoryName(cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
-          preludePath = System.IO.Path.Combine(codebase, "DafnyPrelude.bpl");
+          preludePath = System.IO.Path.Combine(codebase,
+                            DafnyOptions.O.LangFragment ? "DafnyPrelude_fragment.bpl" : "DafnyPrelude.bpl");
       }
 
       Bpl.Program prelude;
@@ -2315,7 +2316,7 @@ namespace Microsoft.Dafny {
       //       $Is(p, TClassA(G), h) <=> (p == null || dtype(p) == TClassA(G));
       //    axiom (forall p: ref, h: Heap, G: Ty ::
       //       { $IsAlloc(p, TClassA(G), h) }
-      //       $IsAlloc(p, TClassA(G), h) => (p == null || h[p, alloc]);
+      //       $IsAlloc(p, TClassA(G), h) <=> (p == null || h[p, alloc]);
       MapM(c is ClassDecl ? Bools : new List<bool>(), is_alloc => {
         List<Bpl.Expr> tyexprs;
         var vars = MkTyParamBinders(GetTypeParams(c), out tyexprs);

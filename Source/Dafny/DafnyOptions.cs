@@ -32,7 +32,7 @@ namespace Microsoft.Dafny
     }
     public override string VersionSuffix {
       get {
-        return " " + VersionNumber;
+        return " " + VersionNumber + " MODIFIED";
       }
     }
 
@@ -100,6 +100,7 @@ namespace Microsoft.Dafny
     public bool DisableScopes = false;
     public int Allocated = 3;
 	public string ExportFile = null;
+    public bool LangFragment = false;
 
     protected override bool ParseOption(string name, Bpl.CommandLineOptionEngine.CommandLineParseState ps) {
       var args = ps.args;  // convenient synonym
@@ -122,6 +123,10 @@ namespace Microsoft.Dafny
 		  	ExportFile = args[ps.i];
 		  }
 		  return true;
+
+        case "fragment":
+          LangFragment = true;
+          return true;
 
         case "printMode":
           if (ps.ConfirmArgumentCount(1)) {

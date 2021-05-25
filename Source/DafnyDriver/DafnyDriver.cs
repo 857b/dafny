@@ -10,6 +10,8 @@
 //       - main program for taking a Dafny program and verifying it
 //---------------------------------------------------------------------------------------------
 
+#define BPL_EXPORT
+
 namespace Microsoft.Dafny
 {
   using System;
@@ -22,6 +24,10 @@ namespace Microsoft.Dafny
   using Microsoft.Boogie;
   using Bpl = Microsoft.Boogie;
   using System.Diagnostics;
+
+#if BPL_EXPORT
+  using ProofGeneration;
+#endif
 
   public class DafnyDriver
   {
@@ -269,8 +275,8 @@ namespace Microsoft.Dafny
       } else if (dafnyProgram != null && !CommandLineOptions.Clo.NoResolve && !CommandLineOptions.Clo.NoTypecheck
           && DafnyOptions.O.DafnyVerify) {
 
-		if (DafnyOptions.O.ExportFile != null) {
-			var exporter = new DafnyExporter(DafnyOptions.O.ExportFile);
+		if (DafnyOptions.O.DfyExportFile != null) {
+			var exporter = new DafnyExporter(DafnyOptions.O.DfyExportFile);
 			exporter.Export(dafnyProgram);
 		}
 
@@ -496,11 +502,36 @@ namespace Microsoft.Dafny
           return oc;
 
         case PipelineOutcome.ResolvedAndTypeChecked:
+#if BPL_EXPORT
+          {
+            Console.WriteLine("Verifying and exporting Boogie program...");
+            // We reparse the Boogie program to remove comments
+            ExecutionEngine.PrintBplFile(bplFileName, program, false, false, CommandLineOptions.Clo.PrettyPrint);
+            List<string/*!*/>/*!*/ fileNames = new List<string/*!*/>();
+            fileNames.Add(bplFileName);
+            Bpl.Program reparsedProgram = ExecutionEngine.ParseBoogieProgram(fileNames, true);
+            if (reparsedProgram == null)
+              throw new ArgumentNullException("reparsed program");
+
+            DafnyOptions.O.DesugarMaps = true;
+            DafnyOptions.O.GenerateIsaProgNoProofs = true;
+            ProofGenerationOutput.CreateMainDirectory(
+                DafnyOptions.O.BplExportDir == null ? bplFileName : DafnyOptions.O.BplExportDir);
+            ExecutionEngine.ResolveAndTypecheck(reparsedProgram, bplFileName, out ctc);
+            ExecutionEngine.CollectModSets(reparsedProgram);
+            ExecutionEngine.CoalesceBlocks(reparsedProgram);
+            ExecutionEngine.Inline(reparsedProgram);
+            oc = ExecutionEngine.InferAndVerify(reparsedProgram, stats, programId);
+            ProofGenerationOutput.FinishStoring();
+            return oc;
+          }
+#else
           ExecutionEngine.EliminateDeadVariables(program);
           ExecutionEngine.CollectModSets(program);
           ExecutionEngine.CoalesceBlocks(program);
           ExecutionEngine.Inline(program);
           return ExecutionEngine.InferAndVerify(program, stats, programId);
+#endif
 
         default:
           Contract.Assert(false); throw new cce.UnreachableException();  // unexpected outcome

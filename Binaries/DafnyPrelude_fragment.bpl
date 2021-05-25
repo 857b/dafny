@@ -15,7 +15,7 @@ axiom $$Language$Dafny;        // coming from a Dafny program.
 // ---------------------------------------------------------------
 
 type Ty;
-type Bv0 = int;
+type Bv0;
 
 const unique TBool : Ty;
 const unique TInt  : Ty;
@@ -104,6 +104,7 @@ function $IsAllocBox<T>(T,Ty,Heap): bool;
 axiom(forall v : int  :: { $Is(v,TInt) }  $Is(v,TInt));
 axiom(forall v : bool :: { $Is(v,TBool) } $Is(v,TBool));
 
+//AxIsAllocInt
 axiom(forall h : Heap, v : int  :: { $IsAlloc(v,TInt,h) }  $IsAlloc(v,TInt,h));
 axiom(forall h : Heap, v : bool :: { $IsAlloc(v,TBool,h) } $IsAlloc(v,TBool,h));
 
@@ -143,13 +144,13 @@ function BoxRank(Box): int;
 // -- Big Ordinals --------------------------------------------{{{
 // ---------------------------------------------------------------
 
-type ORDINAL = Box;  // :| There are more big ordinals than boxes
+type ORDINAL;
 
 function ORD#IsNat(ORDINAL): bool;
 function ORD#Offset(ORDINAL): int;
 
-function {:inline} ORD#IsLimit(o: ORDINAL): bool { ORD#Offset(o) == 0 }
-function {:inline} ORD#IsSucc(o: ORDINAL): bool { 0 < ORD#Offset(o) }
+function ORD#IsLimit(o: ORDINAL): bool;
+function ORD#IsSucc(o: ORDINAL): bool;
 
 // }}}------------------------------------------------------------
 // -- Axiom contexts ------------------------------------------{{{
@@ -192,6 +193,7 @@ function $IsGhostField<T>(Field T): bool;
 
 // $IsAlloc and $IsAllocBox are monotonic
 
+//AxHeapSuccIsAlloc
 axiom(forall<T> h, k : Heap, v : T, t : Ty ::
   { $HeapSucc(h, k), $IsAlloc(v, t, h) }
   $HeapSucc(h, k) ==> $IsAlloc(v, t, h) ==> $IsAlloc(v, t, k));
@@ -237,6 +239,7 @@ const $OneHeap: Heap;
 axiom $IsGoodHeap($OneHeap);
 
 function $HeapSucc(Heap, Heap): bool;
+//AxUpdtHeapSucc
 axiom (forall<alpha> h: Heap, r: ref, f: Field alpha, x: alpha :: { update(h, r, f, x) }
   $IsGoodHeap(update(h, r, f, x)) ==>
   $HeapSucc(h, update(h, r, f, x)));
@@ -253,43 +256,6 @@ type TickType;
 var $Tick: TickType;
 
 // }}}------------------------------------------------------------
-// -- Useful macros -------------------------------------------{{{
-// ---------------------------------------------------------------
-
-// havoc everything in $Heap, except {this}+rds+nw
-procedure $YieldHavoc(this: ref, rds: Set Box, nw: Set Box);
-  modifies $Heap;
-  ensures (forall<alpha> $o: ref, $f: Field alpha :: { read($Heap, $o, $f) }
-            $o != null && read(old($Heap), $o, alloc) ==>
-            $o == this || rds[$Box($o)] || nw[$Box($o)] ==>
-              read($Heap, $o, $f) == read(old($Heap), $o, $f));
-  ensures $HeapSucc(old($Heap), $Heap);
-
-// havoc everything in $Heap, except rds-modi-{this}
-procedure $IterHavoc0(this: ref, rds: Set Box, modi: Set Box);
-  modifies $Heap;
-  ensures (forall<alpha> $o: ref, $f: Field alpha :: { read($Heap, $o, $f) }
-            $o != null && read(old($Heap), $o, alloc) ==>
-            rds[$Box($o)] && !modi[$Box($o)] && $o != this ==>
-              read($Heap, $o, $f) == read(old($Heap), $o, $f));
-  ensures $HeapSucc(old($Heap), $Heap);
-
-// havoc $Heap at {this}+modi+nw
-procedure $IterHavoc1(this: ref, modi: Set Box, nw: Set Box);
-  modifies $Heap;
-  ensures (forall<alpha> $o: ref, $f: Field alpha :: { read($Heap, $o, $f) }
-            $o != null && read(old($Heap), $o, alloc) ==>
-              read($Heap, $o, $f) == read(old($Heap), $o, $f) ||
-              $o == this || modi[$Box($o)] || nw[$Box($o)]);
-  ensures $HeapSucc(old($Heap), $Heap);
-
-procedure $IterCollectNewObjects(prevHeap: Heap, newHeap: Heap, this: ref, NW: Field (Set Box))
-                        returns (s: Set Box);
-  ensures (forall bx: Box :: { s[bx] } s[bx] <==>
-              read(newHeap, this, NW)[bx] ||
-              ($Unbox(bx) != null && !read(prevHeap, $Unbox(bx):ref, alloc) && read(newHeap, $Unbox(bx):ref, alloc)));
-
-// }}}------------------------------------------------------------
 // -- Axiomatizations -----------------------------------------{{{
 // ---------------------------------------------------------------
 
@@ -297,7 +263,7 @@ procedure $IterCollectNewObjects(prevHeap: Heap, newHeap: Heap, this: ref, NW: F
 // -- Axiomatization of sets ----------------------------------{{{
 // ---------------------------------------------------------------
 
-type Set T = [T]bool;
+type Set T;
 
 function Set#Empty<T>(): Set T;
 function Set#Equal<T>(Set T, Set T): bool;
@@ -305,13 +271,13 @@ function Set#Equal<T>(Set T, Set T): bool;
 // -- Axiomatization of isets ---------------------------------{{{
 // ---------------------------------------------------------------
 
-type ISet T = [T]bool;
+type ISet T;
 
 // }}}------------------------------------------------------------
 // -- Axiomatization of multisets -----------------------------{{{
 // ---------------------------------------------------------------
 
-type MultiSet T = [T]int;
+type MultiSet T;
 
 // }}}------------------------------------------------------------
 // -- Axiomatization of sequences -----------------------------{{{
@@ -401,4 +367,10 @@ axiom (forall x, y, z: int ::
   Mul(y, z) != 0 ==> Mul(x, Mul(y, z)) == Mul(Mul(x, y), z));
 #endif
 
-// }}}----------------------------------------------------------------------
+// }}}------------------------------------------------------------
+// -- BuiltIns declarations -----------------------------------{{{
+// ---------------------------------------------------------------
+
+function Tclass._System.array?(Ty) : Ty;
+
+// }}}------------------------------------------------------------

@@ -293,9 +293,16 @@ namespace Microsoft.Dafny {
         get { return BoxType; }
       }
       public readonly Bpl.Type TickType;
-      private readonly Bpl.TypeSynonymDecl setTypeCtor;
-      private readonly Bpl.TypeSynonymDecl isetTypeCtor;
-      private readonly Bpl.TypeSynonymDecl multiSetTypeCtor;
+      private readonly bool fragment_defs;
+      // To use if fragment_defs
+      private readonly Bpl.TypeCtorDecl setTypeCtor;
+      private readonly Bpl.TypeCtorDecl isetTypeCtor;
+      private readonly Bpl.TypeCtorDecl multiSetTypeCtor;
+      // To use otherwise
+      private readonly Bpl.TypeSynonymDecl setTypeCtor_syn;
+      private readonly Bpl.TypeSynonymDecl isetTypeCtor_syn;
+      private readonly Bpl.TypeSynonymDecl multiSetTypeCtor_syn;
+
       private readonly Bpl.TypeCtorDecl mapTypeCtor;
       private readonly Bpl.TypeCtorDecl imapTypeCtor;
       public readonly Bpl.Function ArrayLength;
@@ -335,8 +342,8 @@ namespace Microsoft.Dafny {
         Contract.Invariant(RefType != null);
         Contract.Invariant(BoxType != null);
         Contract.Invariant(TickType != null);
-        Contract.Invariant(setTypeCtor != null);
-        Contract.Invariant(multiSetTypeCtor != null);
+        Contract.Invariant(fragment_defs ? setTypeCtor != null : setTypeCtor_syn != null);
+        Contract.Invariant(fragment_defs ? multiSetTypeCtor != null : multiSetTypeCtor_syn != null);
         Contract.Invariant(ArrayLength != null);
         Contract.Invariant(RealFloor != null);
         Contract.Invariant(ORDINAL_IsLimit != null);
@@ -373,7 +380,14 @@ namespace Microsoft.Dafny {
         Contract.Requires(ty != null);
         Contract.Ensures(Contract.Result<Bpl.Type>() != null);
 
-        return new Bpl.TypeSynonymAnnotation(Token.NoToken, finite ? setTypeCtor : isetTypeCtor, new List<Bpl.Type> { ty });
+        if (fragment_defs)
+          return new Bpl.CtorType(Token.NoToken,
+                            finite ? setTypeCtor : isetTypeCtor,
+                            new List<Bpl.Type> { ty });
+        else
+          return new Bpl.TypeSynonymAnnotation(Token.NoToken,
+                            finite ? setTypeCtor_syn : isetTypeCtor_syn,
+                            new List<Bpl.Type> { ty });
       }
 
       public Bpl.Type MultiSetType(IToken tok, Bpl.Type ty) {
@@ -381,7 +395,12 @@ namespace Microsoft.Dafny {
         Contract.Requires(ty != null);
         Contract.Ensures(Contract.Result<Bpl.Type>() != null);
 
-        return new Bpl.TypeSynonymAnnotation(Token.NoToken, multiSetTypeCtor, new List<Bpl.Type>{ ty });
+        if (fragment_defs)
+            return new Bpl.CtorType(Token.NoToken,
+                               multiSetTypeCtor, new List<Bpl.Type>{ ty });
+        else
+            return new Bpl.TypeSynonymAnnotation(Token.NoToken,
+                               multiSetTypeCtor_syn, new List<Bpl.Type>{ ty });
       }
       public Bpl.Type MapType(IToken tok, bool finite, Bpl.Type tya, Bpl.Type tyb) {
         Contract.Requires(tok != null);
@@ -413,15 +432,18 @@ namespace Microsoft.Dafny {
         return new Bpl.IdentifierExpr(tok, AllocField);
       }
 
-      public PredefinedDecls(Bpl.TypeCtorDecl charType, Bpl.TypeCtorDecl refType, Bpl.TypeCtorDecl boxType, Bpl.TypeCtorDecl tickType,
-                             Bpl.TypeSynonymDecl setTypeCtor, Bpl.TypeSynonymDecl isetTypeCtor, Bpl.TypeSynonymDecl multiSetTypeCtor,
+      public PredefinedDecls(bool fragment_defs,
+                             Bpl.TypeCtorDecl charType, Bpl.TypeCtorDecl refType, Bpl.TypeCtorDecl boxType, Bpl.TypeCtorDecl tickType,
+                             Bpl.TypeCtorDecl setTypeCtor, Bpl.TypeSynonymDecl setTypeCtor_syn,
+                             Bpl.TypeCtorDecl isetTypeCtor, Bpl.TypeSynonymDecl isetTypeCtor_syn,
+                             Bpl.TypeCtorDecl multiSetTypeCtor, Bpl.TypeSynonymDecl multiSetTypeCtor_syn,
                              Bpl.TypeCtorDecl mapTypeCtor, Bpl.TypeCtorDecl imapTypeCtor,
                              Bpl.Function arrayLength, Bpl.Function realFloor,
                              Bpl.Function ORD_isLimit, Bpl.Function ORD_isSucc, Bpl.Function ORD_offset, Bpl.Function ORD_isNat,
                              Bpl.Function mapDomain, Bpl.Function imapDomain,
                              Bpl.Function mapValues, Bpl.Function imapValues, Bpl.Function mapItems, Bpl.Function imapItems,
                              Bpl.Function tuple2Destructors0, Bpl.Function tuple2Destructors1, Bpl.Function tuple2Constructor,
-                             Bpl.TypeCtorDecl seqTypeCtor, Bpl.TypeSynonymDecl bv0TypeDecl,
+                             Bpl.TypeCtorDecl seqTypeCtor, Bpl.TypeCtorDecl bv0TypeDecl, Bpl.TypeSynonymDecl bv0TypeDecl_syn,
                              Bpl.TypeCtorDecl fieldNameType, Bpl.TypeCtorDecl tyType, Bpl.TypeCtorDecl tyTagType, Bpl.TypeCtorDecl tyTagFamilyType,
                              Bpl.GlobalVariable heap, Bpl.TypeCtorDecl classNameType, Bpl.TypeCtorDecl nameFamilyType,
                              Bpl.TypeCtorDecl datatypeType, Bpl.TypeCtorDecl handleType, Bpl.TypeCtorDecl layerType, Bpl.TypeCtorDecl dtCtorId,
@@ -431,9 +453,9 @@ namespace Microsoft.Dafny {
         Contract.Requires(refType != null);
         Contract.Requires(boxType != null);
         Contract.Requires(tickType != null);
-        Contract.Requires(setTypeCtor != null);
-        Contract.Requires(isetTypeCtor != null);
-        Contract.Requires(multiSetTypeCtor != null);
+        Contract.Requires(fragment_defs ? setTypeCtor != null : setTypeCtor_syn != null);
+        Contract.Requires(fragment_defs ? isetTypeCtor != null : isetTypeCtor_syn != null);
+        Contract.Requires(fragment_defs ? multiSetTypeCtor != null : multiSetTypeCtor_syn != null);
         Contract.Requires(mapTypeCtor != null);
         Contract.Requires(imapTypeCtor != null);
         Contract.Requires(arrayLength != null);
@@ -452,7 +474,7 @@ namespace Microsoft.Dafny {
         Contract.Requires(tuple2Destructors1 != null);
         Contract.Requires(tuple2Constructor != null);
         Contract.Requires(seqTypeCtor != null);
-        Contract.Requires(bv0TypeDecl != null);
+        Contract.Requires(fragment_defs ? bv0TypeDecl != null : bv0TypeDecl_syn != null);
         Contract.Requires(fieldNameType != null);
         Contract.Requires(heap != null);
         Contract.Requires(classNameType != null);
@@ -465,14 +487,18 @@ namespace Microsoft.Dafny {
         Contract.Requires(tyTagFamilyType != null);
         #endregion
 
+        this.fragment_defs = fragment_defs;
         this.CharType = new Bpl.CtorType(Token.NoToken, charType, new List<Bpl.Type>());
         Bpl.CtorType refT = new Bpl.CtorType(Token.NoToken, refType, new List<Bpl.Type>());
         this.RefType = refT;
         this.BoxType = new Bpl.CtorType(Token.NoToken, boxType, new List<Bpl.Type>());
         this.TickType = new Bpl.CtorType(Token.NoToken, tickType, new List<Bpl.Type>());
         this.setTypeCtor = setTypeCtor;
+        this.setTypeCtor_syn = setTypeCtor_syn;
         this.isetTypeCtor = isetTypeCtor;
+        this.isetTypeCtor_syn = isetTypeCtor_syn;
         this.multiSetTypeCtor = multiSetTypeCtor;
+        this.multiSetTypeCtor_syn = multiSetTypeCtor_syn;
         this.mapTypeCtor = mapTypeCtor;
         this.imapTypeCtor = imapTypeCtor;
         this.ArrayLength = arrayLength;
@@ -491,7 +517,10 @@ namespace Microsoft.Dafny {
         this.Tuple2Destructors1 = tuple2Destructors1;
         this.Tuple2Constructor = tuple2Constructor;
         this.seqTypeCtor = seqTypeCtor;
-        this.Bv0Type = new Bpl.TypeSynonymAnnotation(Token.NoToken, bv0TypeDecl, new List<Bpl.Type>());
+        if (fragment_defs)
+            this.Bv0Type = new Bpl.CtorType(Token.NoToken, bv0TypeDecl, new List<Bpl.Type>());
+        else
+            this.Bv0Type = new Bpl.TypeSynonymAnnotation(Token.NoToken, bv0TypeDecl_syn, new List<Bpl.Type>());
         this.fieldName = fieldNameType;
         this.HeapType = heap.TypedIdent.Type;
         this.HeapVarName = heap.Name;
@@ -518,9 +547,12 @@ namespace Microsoft.Dafny {
 
       Bpl.TypeCtorDecl charType = null;
       Bpl.TypeCtorDecl refType = null;
-      Bpl.TypeSynonymDecl setTypeCtor = null;
-      Bpl.TypeSynonymDecl isetTypeCtor = null;
-      Bpl.TypeSynonymDecl multiSetTypeCtor = null;
+      Bpl.TypeCtorDecl setTypeCtor = null;
+      Bpl.TypeSynonymDecl setTypeCtor_syn = null;
+      Bpl.TypeCtorDecl isetTypeCtor = null;
+      Bpl.TypeSynonymDecl isetTypeCtor_syn = null;
+      Bpl.TypeCtorDecl multiSetTypeCtor = null;
+      Bpl.TypeSynonymDecl multiSetTypeCtor_syn = null;
       Bpl.Function arrayLength = null;
       Bpl.Function realFloor = null;
       Bpl.Function ORDINAL_isLimit = null;
@@ -539,7 +571,8 @@ namespace Microsoft.Dafny {
       Bpl.TypeCtorDecl seqTypeCtor = null;
       Bpl.TypeCtorDecl fieldNameType = null;
       Bpl.TypeCtorDecl classNameType = null;
-      Bpl.TypeSynonymDecl bv0TypeDecl = null;
+      Bpl.TypeCtorDecl bv0TypeDecl = null;
+      Bpl.TypeSynonymDecl bv0TypeDecl_syn = null;
       Bpl.TypeCtorDecl tyType = null;
       Bpl.TypeCtorDecl tyTagType = null;
       Bpl.TypeCtorDecl tyTagFamilyType = null;
@@ -591,10 +624,7 @@ namespace Microsoft.Dafny {
             mapTypeCtor = dt;
           } else if (dt.Name == "IMap") {
             imapTypeCtor = dt;
-          }
-        } else if (d is Bpl.TypeSynonymDecl) {
-          Bpl.TypeSynonymDecl dt = (Bpl.TypeSynonymDecl)d;
-          if (dt.Name == "Set") {
+          } else if (dt.Name == "Set") {
             setTypeCtor = dt;
           } else if (dt.Name == "MultiSet") {
             multiSetTypeCtor = dt;
@@ -602,6 +632,17 @@ namespace Microsoft.Dafny {
             isetTypeCtor = dt;
           } else if (dt.Name == "Bv0") {
             bv0TypeDecl = dt;
+          }
+        } else if (d is Bpl.TypeSynonymDecl) {
+          Bpl.TypeSynonymDecl dt = (Bpl.TypeSynonymDecl)d;
+          if (dt.Name == "Set") {
+            setTypeCtor_syn = dt;
+          } else if (dt.Name == "MultiSet") {
+            multiSetTypeCtor_syn = dt;
+          } else if (dt.Name == "ISet") {
+            isetTypeCtor_syn = dt;
+          } else if (dt.Name == "Bv0") {
+            bv0TypeDecl_syn = dt;
           }
         } else if (d is Bpl.Constant) {
           Bpl.Constant c = (Bpl.Constant)d;
@@ -648,13 +689,14 @@ namespace Microsoft.Dafny {
           }
         }
       }
+      bool fragment_defs = DafnyOptions.O.LangFragment;
       if (seqTypeCtor == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type Seq");
-      } else if (setTypeCtor == null) {
+      } else if (fragment_defs ? setTypeCtor == null : setTypeCtor_syn == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type Set");
-      } else if (isetTypeCtor == null) {
+      } else if (fragment_defs ? isetTypeCtor == null : isetTypeCtor_syn == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type ISet");
-      } else if (multiSetTypeCtor == null) {
+      } else if (fragment_defs ? multiSetTypeCtor == null : multiSetTypeCtor_syn == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type MultiSet");
       } else if (mapTypeCtor == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type Map");
@@ -690,7 +732,7 @@ namespace Microsoft.Dafny {
         Console.WriteLine("Error: Dafny prelude is missing declaration of function _System.Tuple2._1");
       } else if (tuple2Constructor == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of function #_System._tuple#2._#Make2");
-      } else if (bv0TypeDecl == null) {
+      } else if (fragment_defs ? bv0TypeDecl == null : bv0TypeDecl_syn == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type Bv0");
       } else if (fieldNameType == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type Field");
@@ -725,15 +767,18 @@ namespace Microsoft.Dafny {
       } else if (allocField == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of constant alloc");
       } else {
-        return new PredefinedDecls(charType, refType, boxType, tickType,
-                                   setTypeCtor, isetTypeCtor, multiSetTypeCtor,
+        return new PredefinedDecls(fragment_defs,
+                                   charType, refType, boxType, tickType,
+                                   setTypeCtor, setTypeCtor_syn,
+                                   isetTypeCtor, isetTypeCtor_syn,
+                                   multiSetTypeCtor, multiSetTypeCtor_syn,
                                    mapTypeCtor, imapTypeCtor,
                                    arrayLength, realFloor,
                                    ORDINAL_isLimit, ORDINAL_isSucc, ORDINAL_offset, ORDINAL_isNat,
                                    mapDomain, imapDomain,
                                    mapValues, imapValues, mapItems, imapItems,
                                    tuple2Destructors0, tuple2Destructors1, tuple2Constructor,
-                                   seqTypeCtor, bv0TypeDecl,
+                                   seqTypeCtor, bv0TypeDecl, bv0TypeDecl_syn,
                                    fieldNameType, tyType, tyTagType, tyTagFamilyType,
                                    heap, classNameType, nameFamilyType,
                                    datatypeType, handleType, layerType, dtCtorId,
@@ -821,41 +866,43 @@ namespace Microsoft.Dafny {
       }
 	  section.Close(sink);
 
-	  section = new GlobalComment.Bounds("BuiltIns declarations");
-	  section.Open(sink);
-      foreach (TopLevelDecl d in program.BuiltIns.SystemModule.TopLevelDecls) {
-        currentDeclaration = d;
-        if (d is OpaqueTypeDecl) {
-          var dd = (OpaqueTypeDecl)d;
-          AddTypeDecl(dd);
-          AddClassMembers(dd, true);
-        } else if (d is NewtypeDecl) {
-          var dd = (NewtypeDecl)d;
-          AddTypeDecl(dd);
-          AddClassMembers(dd, true);
-        } else if (d is SubsetTypeDecl) {
-          AddTypeDecl((SubsetTypeDecl)d);
-        } else if (d is TypeSynonymDecl) {
-          // do nothing, just bypass type synonyms in the translation
-        } else if (d is DatatypeDecl) {
-          var dd = (DatatypeDecl)d;
-          AddDatatype(dd);
-          AddClassMembers(dd, true);
-        } else if (d is ArrowTypeDecl) {
-          var ad = (ArrowTypeDecl)d;
-          GetClassTyCon(ad);
-          AddArrowTypeAxioms(ad);
-        } else if (d is ClassDecl) {
-          var cl = (ClassDecl)d;
-          AddClassMembers(cl, true);
-          if (cl.NonNullTypeDecl != null) {
-            AddTypeDecl(cl.NonNullTypeDecl);
+      if (!DafnyOptions.O.LangFragment) {
+        section = new GlobalComment.Bounds("BuiltIns declarations");
+        section.Open(sink);
+        foreach (TopLevelDecl d in program.BuiltIns.SystemModule.TopLevelDecls) {
+          currentDeclaration = d;
+          if (d is OpaqueTypeDecl) {
+            var dd = (OpaqueTypeDecl)d;
+            AddTypeDecl(dd);
+            AddClassMembers(dd, true);
+          } else if (d is NewtypeDecl) {
+            var dd = (NewtypeDecl)d;
+            AddTypeDecl(dd);
+            AddClassMembers(dd, true);
+          } else if (d is SubsetTypeDecl) {
+            AddTypeDecl((SubsetTypeDecl)d);
+          } else if (d is TypeSynonymDecl) {
+            // do nothing, just bypass type synonyms in the translation
+          } else if (d is DatatypeDecl) {
+            var dd = (DatatypeDecl)d;
+            AddDatatype(dd);
+            AddClassMembers(dd, true);
+          } else if (d is ArrowTypeDecl) {
+            var ad = (ArrowTypeDecl)d;
+            GetClassTyCon(ad);
+            AddArrowTypeAxioms(ad);
+          } else if (d is ClassDecl) {
+            var cl = (ClassDecl)d;
+            AddClassMembers(cl, true);
+            if (cl.NonNullTypeDecl != null) {
+              AddTypeDecl(cl.NonNullTypeDecl);
+            }
+          } else {
+            Contract.Assert(d is ValuetypeDecl);
           }
-        } else {
-          Contract.Assert(d is ValuetypeDecl);
         }
+        section.Close(sink);
       }
-	  section.Close(sink);
 
       ComputeFunctionFuel(); // compute which function needs fuel constants.
 
@@ -10396,7 +10443,6 @@ namespace Microsoft.Dafny {
       Contract.Requires(etran != null);
       Contract.Requires(codeContext != null && predef != null);
       Contract.Ensures(fuelContext == Contract.OldValue(fuelContext));
-      builder.Add(new Bpl.AssumeCmd(stmt.Tok, Bpl.Expr.True, new QKeyValue(stmt.Tok, "begin_stmt", new List<object>(), null)));
 
       stmtContext = StmtType.NONE;
       adjustFuelForExists = true;  // fuel for exists might need to be adjusted based on whether it's in an assert or assume stmt.

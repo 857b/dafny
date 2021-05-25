@@ -99,7 +99,7 @@ namespace Microsoft.Dafny
     public bool UseRuntimeLib = false;
     public bool DisableScopes = false;
     public int Allocated = 3;
-	public string ExportFile = null;
+    public string DfyExportFile = null;
     public bool LangFragment = false;
 
     protected override bool ParseOption(string name, Bpl.CommandLineOptionEngine.CommandLineParseState ps) {
@@ -118,11 +118,11 @@ namespace Microsoft.Dafny
           }
           return true;
 
-	    case "export":
-		  if (ps.ConfirmArgumentCount(1)) {
-		  	ExportFile = args[ps.i];
-		  }
-		  return true;
+        case "exportDfy":
+          if (ps.ConfirmArgumentCount(1)) {
+            DfyExportFile = args[ps.i];
+          }
+          return true;
 
         case "fragment":
           LangFragment = true;

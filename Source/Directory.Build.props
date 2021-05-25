@@ -5,9 +5,9 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
-  <!-- Boogie dependency -->
+  <!-- Boogie dependency (modified version) -->
   <ItemGroup>
-    <PackageReference Include="Boogie.ExecutionEngine" Version="2.8.26" />
+    <PackageReference Include="Boogie.ExecutionEngine" Version="500.0.5" />
   </ItemGroup>
 
 </Project>

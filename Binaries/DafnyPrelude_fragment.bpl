@@ -104,7 +104,7 @@ function $IsAllocBox<T>(T,Ty,Heap): bool;
 axiom(forall v : int  :: { $Is(v,TInt) }  $Is(v,TInt));
 axiom(forall v : bool :: { $Is(v,TBool) } $Is(v,TBool));
 
-//AxIsAllocInt
+// AxIsAllocInt
 axiom(forall h : Heap, v : int  :: { $IsAlloc(v,TInt,h) }  $IsAlloc(v,TInt,h));
 axiom(forall h : Heap, v : bool :: { $IsAlloc(v,TBool,h) } $IsAlloc(v,TBool,h));
 
@@ -193,7 +193,7 @@ function $IsGhostField<T>(Field T): bool;
 
 // $IsAlloc and $IsAllocBox are monotonic
 
-//AxHeapSuccIsAlloc
+// AxHeapSuccIsAlloc
 axiom(forall<T> h, k : Heap, v : T, t : Ty ::
   { $HeapSucc(h, k), $IsAlloc(v, t, h) }
   $HeapSucc(h, k) ==> $IsAlloc(v, t, h) ==> $IsAlloc(v, t, k));
@@ -239,12 +239,13 @@ const $OneHeap: Heap;
 axiom $IsGoodHeap($OneHeap);
 
 function $HeapSucc(Heap, Heap): bool;
-//AxUpdtHeapSucc
+// AxUpdtHeapSucc
 axiom (forall<alpha> h: Heap, r: ref, f: Field alpha, x: alpha :: { update(h, r, f, x) }
   $IsGoodHeap(update(h, r, f, x)) ==>
   $HeapSucc(h, update(h, r, f, x)));
 axiom (forall a,b,c: Heap :: { $HeapSucc(a,b), $HeapSucc(b,c) }
   a != c ==> $HeapSucc(a,b) && $HeapSucc(b,c) ==> $HeapSucc(a,c));
+// AxHeapSuccAlloc
 axiom (forall h: Heap, k: Heap :: { $HeapSucc(h,k) }
   $HeapSucc(h,k) ==> (forall o: ref :: { read(k, o, alloc) } read(h, o, alloc) ==> read(k, o, alloc)));
 

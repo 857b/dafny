@@ -5,6 +5,9 @@
 // SPDX-License-Identifier: MIT
 //
 //-----------------------------------------------------------------------------
+
+#define AVOID_LAMBDAS
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5843,10 +5846,26 @@ namespace Microsoft.Dafny {
       Bpl.Expr oNotNull = Bpl.Expr.Neq(o, predef.Null);
       Bpl.Expr ante = Bpl.Expr.And(oNotNull, etran.IsAlloced(tok, o));
       Bpl.Expr consequent = InRWClause(tok, o, f, frameClause, etran, null, null);
+
+#if AVOID_LAMBDAS
+      // To avoid lambda epxressions, we replace:
+      //   $_Frame := (lambda<alpha> $o : ref, $f : Field alpha :: ...);
+      // by:
+      //   havoc $_Frame;
+      //   assume (forall<alpha> $o : ref, $f : Field alpha :: $_Frame[r,f] == ...);
+      Bpl.Expr asm = new Bpl.ForallExpr(tok, new List<TypeVariable> { alpha },
+                                             new List<Variable> { oVar, fVar },
+         Bpl.Expr.Eq(Bpl.Expr.Select(new Bpl.IdentifierExpr(tok, frame), o, f),
+                     Bpl.Expr.Imp(ante, consequent)));
+      builder.Add(new Bpl.HavocCmd(tok,
+                    new List<Bpl.IdentifierExpr>{new Bpl.IdentifierExpr(tok, frame)}));
+      builder.Add(new Bpl.AssumeCmd(tok, asm));
+#else
       Bpl.Expr lambda = new Bpl.LambdaExpr(tok, new List<TypeVariable> { alpha }, new List<Variable> { oVar, fVar }, null,
                                            Bpl.Expr.Imp(ante, consequent));
 
       builder.Add(Bpl.Cmd.SimpleAssign(tok, new Bpl.IdentifierExpr(tok, frame), lambda));
+#endif
     }
 
     void CheckFrameSubset(IToken tok, List<FrameExpression> calleeFrame,
@@ -10123,7 +10142,7 @@ namespace Microsoft.Dafny {
 
       // generate:
       //  (forall<alpha> o: ref, f: Field alpha :: { $Heap[o,f] }
-      //      o != null && old($Heap)[o,alloc] ==>
+      //      o != null && PreHeap[o,alloc] ==>
       //        $Heap[o,f] == PreHeap[o,f] ||
       //        $_Frame[o,f])
       Bpl.TypeVariable alpha = new Bpl.TypeVariable(tok, "alpha");

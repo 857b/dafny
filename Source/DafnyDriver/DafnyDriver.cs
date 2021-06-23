@@ -10,7 +10,7 @@
 //       - main program for taking a Dafny program and verifying it
 //---------------------------------------------------------------------------------------------
 
-#define BPL_EXPORT
+#define EXPORT
 
 namespace Microsoft.Dafny
 {
@@ -25,8 +25,9 @@ namespace Microsoft.Dafny
   using Bpl = Microsoft.Boogie;
   using System.Diagnostics;
 
-#if BPL_EXPORT
+#if EXPORT
   using ProofGeneration;
+  using Isa = Isabelle;
 #endif
 
   public class DafnyDriver
@@ -275,10 +276,22 @@ namespace Microsoft.Dafny
       } else if (dafnyProgram != null && !CommandLineOptions.Clo.NoResolve && !CommandLineOptions.Clo.NoTypecheck
           && DafnyOptions.O.DafnyVerify) {
 
+#if EXPORT
 		if (DafnyOptions.O.DfyExportFile != null) {
-			var exporter = new DafnyExporter(DafnyOptions.O.DfyExportFile);
-			exporter.Export(dafnyProgram);
+          Console.WriteLine("Exporting Dafny program...");
+          var exporter = new DafnyExporter();
+          var declarations = exporter.Export(dafnyProgram);
+          var isaDecl = declarations.ToIsaTerm();
+          var disp = false;
+          var wr   = System.Console.Out;
+          if (DafnyOptions.O.DfyExportFile != "-") {
+            disp = true;
+            wr   = new System.IO.StreamWriter(DafnyOptions.O.DfyExportFile);
+          }
+          wr.Write(isaDecl.Dispatch(new Isa.IsaPrettyPrint.TermPrettyPrinter()));
+          if (disp) wr.Dispose();
 		}
+#endif
 
         var boogiePrograms = Translate(dafnyProgram);
 
@@ -502,7 +515,7 @@ namespace Microsoft.Dafny
           return oc;
 
         case PipelineOutcome.ResolvedAndTypeChecked:
-#if BPL_EXPORT
+#if EXPORT
             Console.WriteLine("Verifying and exporting Boogie program...");
             DafnyOptions.O.DesugarMaps = true;
             DafnyOptions.O.GenerateIsaProgNoProofs = true;

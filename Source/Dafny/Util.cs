@@ -439,4 +439,26 @@ namespace Microsoft.Dafny {
       }
     }
   }
+
+  /// <summary>
+  /// Identifier generator used for the export
+  /// </summary>
+  public class IdGenerator
+  {
+    public const int None = -1;
+    protected int NextId;
+
+    public IdGenerator()
+    {
+      NextId = 0;
+    }
+
+    public int MakeId(ref int id)
+    {
+      if (id < 0) {
+        id = NextId++;
+      }
+      return id;
+    }
+  }
 }

@@ -3389,8 +3389,8 @@ namespace Microsoft.Dafny {
     private bool scopeIsInherited = false;
 
     // For Export
-    protected int exportId = DafnyExporter.IdGenerator.None;
-    public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
+    protected int exportId = Dafny.IdGenerator.None;
+    public int ExportUniqueId(IdGenerator generator) {
       return generator.MakeId(ref exportId);
     }
 
@@ -5875,7 +5875,7 @@ namespace Microsoft.Dafny {
     }
 
     // For Export
-    public int ExportUniqueId(DafnyExporter.IdGenerator generator);
+    public int ExportUniqueId(IdGenerator generator);
   }
   [ContractClassFor(typeof(IVariable))]
   public abstract class IVariableContracts : IVariable {
@@ -5941,7 +5941,7 @@ namespace Microsoft.Dafny {
       Contract.Ensures(Contract.Result<string>() != null);
       throw new NotImplementedException();
     }
-    public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
+    public int ExportUniqueId(IdGenerator generator) {
       throw new NotImplementedException();
     }
   }//}}}
@@ -6062,8 +6062,8 @@ namespace Microsoft.Dafny {
       }
     }
 
-    protected int exportId = DafnyExporter.IdGenerator.None;
-    public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
+    protected int exportId = IdGenerator.None;
+    public int ExportUniqueId(IdGenerator generator) {
       return generator.MakeId(ref exportId);
     }
 
@@ -7698,8 +7698,8 @@ namespace Microsoft.Dafny {
       Contract.Invariant(OptionalType != null);
     }
 
-    protected int exportId = DafnyExporter.IdGenerator.None;
-    public int ExportUniqueId(DafnyExporter.IdGenerator generator) {
+    protected int exportId = IdGenerator.None;
+    public int ExportUniqueId(IdGenerator generator) {
       return generator.MakeId(ref exportId);
     }
 

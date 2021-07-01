@@ -10,7 +10,10 @@
 //       - main program for taking a Dafny program and verifying it
 //---------------------------------------------------------------------------------------------
 
+// For a modified Boogie that export the Boogie program
 #define EXPORT
+// For a modified Boogie with an exportBpl:<dir> option
+#define BPL_EXPORT_DIR_OPTION
 
 namespace Microsoft.Dafny
 {
@@ -519,8 +522,12 @@ namespace Microsoft.Dafny
             Console.WriteLine("Verifying and exporting Boogie program...");
             DafnyOptions.O.DesugarMaps = true;
             DafnyOptions.O.GenerateIsaProgNoProofs = true;
+#if BPL_EXPORT_DIR_OPTION
             ProofGenerationOutput.CreateMainDirectory(
                 DafnyOptions.O.BplExportDir == null ? bplFileName : DafnyOptions.O.BplExportDir);
+#else
+            ProofGenerationOutput.CreateMainDirectory(bplFileName);
+#endif
             ExecutionEngine.CollectModSets(program);
             ExecutionEngine.CoalesceBlocks(program);
             ExecutionEngine.Inline(program);

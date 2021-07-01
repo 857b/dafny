@@ -311,19 +311,9 @@ namespace Microsoft.Dafny {
                      TermAppS("cfield_ident", new Isa.NatConst(f.Id)),
                      f.Ty.ToIsaTerm()
             )))))))))),
-         ("IndTy", Isa.TermQuantifier.Lambda(
-             new List<Isa.Identifier>{new Isa.SimpleIdentifier("_")},
-             new List<Isa.TypeIsa>{new Isa.DataType("indty_ident")},
-             TermS("None"))),
-         ("IndCt", Isa.TermQuantifier.Lambda(
-             new List<Isa.Identifier>{new Isa.SimpleIdentifier("_")},
-             new List<Isa.TypeIsa>{new Isa.DataType("constr_ident")},
-             TermS("None"))),
-         // placeholder:
-         ("cfield_wtype", Isa.TermQuantifier.Lambda(
-             new List<Isa.Identifier>{new Isa.SimpleIdentifier("_")},
-             new List<Isa.TypeIsa>{new Isa.DataType("cfield_ident")},
-             TermS("None"))));
+         ("IndTy", TermS("Map.empty")),
+         ("IndCt", TermS("Map.empty")),
+         ("cfield_wtype", TermS("Map.empty")/*placeholder*/) );
     }
   }
 }

@@ -43,6 +43,8 @@ namespace Microsoft.Dafny
           if (d.GetType() == typeof(DefaultClassDecl)) {
             if (decls.Method != null)
               throw new ExportException("multiple _default class");
+            decls.Class.Add((d.ExportUniqueId(id_gen),
+                                (0, new List<(int, Etype)>())));
             decls.Method = ExportDefaultClass((DefaultClassDecl)d);
 
           } else if (d.GetType() == typeof(ClassDecl))

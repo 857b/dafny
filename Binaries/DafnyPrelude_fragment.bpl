@@ -8,6 +8,7 @@
 // SPDX-License-Identifier: MIT
 
 const $$Language$Dafny: bool;  // To be recognizable to the ModelViewer as
+// AxLangDafny
 axiom $$Language$Dafny;        // coming from a Dafny program.
 
 // ---------------------------------------------------------------
@@ -41,12 +42,14 @@ function TagFamily(Ty): TyTagFamily;
 // -- Literals ------------------------------------------------{{{
 // ---------------------------------------------------------------
 function {:identity} Lit<T>(x: T): T { x }
+// AxBoxLit
 axiom (forall<T> x: T :: { $Box(Lit(x)) } $Box(Lit(x)) == Lit($Box(x)) );
 
 // Specialize Lit to concrete types.
 // These aren't logically required, but on some examples improve
 // verification speed
 function {:identity} LitInt(x: int): int { x }
+// AxBoxLitInt
 axiom (forall x: int :: { $Box(LitInt(x)) } $Box(LitInt(x)) == Lit($Box(x)) );
 
 // }}}------------------------------------------------------------
@@ -71,18 +74,23 @@ const $ArbitraryBoxValue: Box;
 function $Box<T>(T): Box;
 function $Unbox<T>(Box): T;
 
+// AxUnboxBox
 axiom (forall<T> x : T :: { $Box(x) } $Unbox($Box(x)) == x);
 
+// AxIsBoxInt
 axiom (forall bx : Box ::
     { $IsBox(bx, TInt) }
     ( $IsBox(bx, TInt) ==> $Box($Unbox(bx) : int) == bx && $Is($Unbox(bx) : int, TInt)));
+// AxIsBoxBool
 axiom (forall bx : Box ::
     { $IsBox(bx, TBool) }
     ( $IsBox(bx, TBool) ==> $Box($Unbox(bx) : bool) == bx && $Is($Unbox(bx) : bool, TBool)));
 
+// AxIsBoxBox
 axiom (forall<T> v : T, t : Ty ::
     { $IsBox($Box(v), t) }
     ( $IsBox($Box(v), t) <==> $Is(v,t) ));
+// AxIsAllocBoxBox
 axiom (forall<T> v : T, t : Ty, h : Heap ::
     { $IsAllocBox($Box(v), t, h) }
     ( $IsAllocBox($Box(v), t, h) <==> $IsAlloc(v,t,h) ));
@@ -101,11 +109,14 @@ function $IsAlloc<T>(T,Ty,Heap): bool;
 function $IsBox<T>(T,Ty): bool;
 function $IsAllocBox<T>(T,Ty,Heap): bool;
 
+// AxIsInt
 axiom(forall v : int  :: { $Is(v,TInt) }  $Is(v,TInt));
+// AxIsBool
 axiom(forall v : bool :: { $Is(v,TBool) } $Is(v,TBool));
 
 // AxIsAllocInt
 axiom(forall h : Heap, v : int  :: { $IsAlloc(v,TInt,h) }  $IsAlloc(v,TInt,h));
+// AxIsAllocBool
 axiom(forall h : Heap, v : bool :: { $IsAlloc(v,TBool,h) } $IsAlloc(v,TBool,h));
 
 // }}}------------------------------------------------------------
@@ -157,7 +168,6 @@ function ORD#IsSucc(o: ORDINAL): bool;
 // ---------------------------------------------------------------
 
 // used to make sure function axioms are not used while their consistency is being checked
-const $ModuleContextHeight: int;
 const $FunctionContextHeight: int;
 
 // }}}------------------------------------------------------------
@@ -180,6 +190,7 @@ function DeclType<T>(Field T): ClassName;
 type NameFamily;
 function DeclName<T>(Field T): NameFamily;
 function FieldOfDecl<alpha>(ClassName, NameFamily): Field alpha;
+// AxFieldOfDeclRec-
 axiom (forall<T> cl : ClassName, nm: NameFamily ::
    {FieldOfDecl(cl, nm): Field T}
    DeclType(FieldOfDecl(cl, nm): Field T) == cl && DeclName(FieldOfDecl(cl, nm): Field T) == nm);
@@ -197,6 +208,7 @@ function $IsGhostField<T>(Field T): bool;
 axiom(forall<T> h, k : Heap, v : T, t : Ty ::
   { $HeapSucc(h, k), $IsAlloc(v, t, h) }
   $HeapSucc(h, k) ==> $IsAlloc(v, t, h) ==> $IsAlloc(v, t, k));
+// AxHeapSuccIsAllocBox
 axiom(forall h, k : Heap, bx : Box, t : Ty ::
   { $HeapSucc(h, k), $IsAllocBox(bx, t, h) }
   $HeapSucc(h, k) ==> $IsAllocBox(bx, t, h) ==> $IsAllocBox(bx, t, k));
@@ -236,6 +248,7 @@ var $Heap: Heap where $IsGoodHeap($Heap) && $IsHeapAnchor($Heap);
 // but the expression generated is really one that is (at least in a correct program)
 // independent of the heap.
 const $OneHeap: Heap;
+// AxOneHeapGood-
 axiom $IsGoodHeap($OneHeap);
 
 function $HeapSucc(Heap, Heap): bool;
@@ -243,6 +256,7 @@ function $HeapSucc(Heap, Heap): bool;
 axiom (forall<alpha> h: Heap, r: ref, f: Field alpha, x: alpha :: { update(h, r, f, x) }
   $IsGoodHeap(update(h, r, f, x)) ==>
   $HeapSucc(h, update(h, r, f, x)));
+// AxHeapSuccTrans
 axiom (forall a,b,c: Heap :: { $HeapSucc(a,b), $HeapSucc(b,c) }
   a != c ==> $HeapSucc(a,b) && $HeapSucc(b,c) ==> $HeapSucc(a,c));
 // AxHeapSuccAlloc
@@ -317,56 +331,6 @@ function IMap#Items<U,V>(IMap U V) : Set Box;
 // }}}-}}}------------------------------------------------------------------
 // -- Provide arithmetic wrappers to improve triggering and non-linear math {{{
 // -------------------------------------------------------------------------
-
-function INTERNAL_add_boogie(x:int, y:int) : int { x + y }
-function INTERNAL_sub_boogie(x:int, y:int) : int { x - y }
-function INTERNAL_mul_boogie(x:int, y:int) : int { x * y }
-function INTERNAL_div_boogie(x:int, y:int) : int { x div y }
-function INTERNAL_mod_boogie(x:int, y:int) : int { x mod y }
-function {:never_pattern true} INTERNAL_lt_boogie(x:int, y:int) : bool { x < y }
-function {:never_pattern true} INTERNAL_le_boogie(x:int, y:int) : bool { x <= y }
-function {:never_pattern true} INTERNAL_gt_boogie(x:int, y:int) : bool { x > y }
-function {:never_pattern true} INTERNAL_ge_boogie(x:int, y:int) : bool { x >= y }
-
-function Mul(x, y: int): int { x * y }
-function Div(x, y: int): int { x div y }
-function Mod(x, y: int): int { x mod y }
-function Add(x, y: int): int { x + y }
-function Sub(x, y: int): int { x - y }
-
-#if ARITH_DISTR
-axiom (forall x, y, z: int ::
-  { Mul(Add(x, y), z) }
-  Mul(Add(x, y), z) == Add(Mul(x, z), Mul(y, z)));
-axiom (forall x,y,z: int ::
-  { Mul(x, Add(y, z)) }
-  Mul(x, Add(y, z)) == Add(Mul(x, y), Mul(x, z)));
-//axiom (forall x, y, z: int ::
-//  { Mul(Sub(x, y), z) }
-//  Mul(Sub(x, y), z) == Sub(Mul(x, z), Mul(y, z)));
-#endif
-#if ARITH_MUL_DIV_MOD
-axiom (forall x, y: int ::
-  { Div(x, y), Mod(x, y) }
-  { Mul(Div(x, y), y) }
-  y != 0 ==>
-  Mul(Div(x, y), y) + Mod(x, y) == x);
-#endif
-#if ARITH_MUL_SIGN
-axiom (forall x, y: int ::
-  { Mul(x, y) }
-  ((0 <= x && 0 <= y) || (x <= 0 && y <= 0) ==> 0 <= Mul(x, y)));
-#endif
-#if ARITH_MUL_COMM
-axiom (forall x, y: int ::
-  { Mul(x, y) }
-  Mul(x, y) == Mul(y, x));
-#endif
-#if ARITH_MUL_ASSOC
-axiom (forall x, y, z: int ::
-  { Mul(x, Mul(y, z)) }
-  Mul(y, z) != 0 ==> Mul(x, Mul(y, z)) == Mul(Mul(x, y), z));
-#endif
 
 // }}}------------------------------------------------------------
 // -- BuiltIns declarations -----------------------------------{{{
